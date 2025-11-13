@@ -65,6 +65,7 @@ const (
 	FeaturePodSpecHostNetwork               = "kubernetes.podspec-hostnetwork"
 	FeaturePodSpecHostPID                   = "kubernetes.podspec-hostpid"
 	FeaturePodSpecHostPath                  = "kubernetes.podspec-volumes-hostpath"
+	FeaturePodSpecHostPathWrite             = "kubernetes.podspec-hostpath-write"
 	FeaturePodSpecVolumesCSI                = "kubernetes.podspec-volumes-csi"
 	FeaturePodSpecInitContainers            = "kubernetes.podspec-init-containers"
 	FeaturePodSpecVolumesMountPropagation   = "kubernetes.podspec-volumes-mount-propagation"
@@ -102,6 +103,7 @@ func defaultFeaturesConfig() *Features {
 		PodSpecTolerations:               Disabled,
 		PodSpecVolumesEmptyDir:           Enabled,
 		PodSpecVolumesHostPath:           Disabled,
+		PodSpecHostPathWrite:             Disabled,
 		PodSpecVolumesMountPropagation:   Disabled,
 		PodSpecVolumesCSI:                Disabled,
 		PodSpecVolumesImage:              Disabled,
@@ -125,6 +127,7 @@ func NewFeaturesConfigFromMap(data map[string]string) (*Features, error) {
 	if err := cm.Parse(data,
 		asFlag("autodetect-http2", &nc.AutoDetectHTTP2),
 		asFlag("kubernetes.podspec-dryrun", &nc.PodSpecDryRun),
+		asFlag("kubernetes.podspec-hostpath-write", &nc.PodSpecHostPathWrite),
 		asFlag("kubernetes.podspec-persistent-volume-write", &nc.PodSpecPersistentVolumeWrite),
 		asFlag("multi-container", &nc.MultiContainer),
 		asFlag("multi-container-probing", &nc.MultiContainerProbing),
@@ -189,6 +192,7 @@ type Features struct {
 	PodSpecTolerations               Flag
 	PodSpecVolumesEmptyDir           Flag
 	PodSpecVolumesHostPath           Flag
+	PodSpecHostPathWrite             Flag
 	PodSpecVolumesMountPropagation   Flag
 	PodSpecVolumesCSI                Flag
 	PodSpecVolumesImage              Flag

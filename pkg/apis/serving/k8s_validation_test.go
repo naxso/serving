@@ -136,6 +136,13 @@ func withPodSpecVolumesHostPathEnabled() configOption {
 	}
 }
 
+func withPodSpecHostPathWriteEnabled() configOption {
+	return func(cfg *config.Config) *config.Config {
+		cfg.Features.PodSpecHostPathWrite = config.Enabled
+		return cfg
+	}
+}
+
 func withPodSpecVolumesCSIEnabled() configOption {
 	return func(cfg *config.Config) *config.Config {
 		cfg.Features.PodSpecVolumesCSI = config.Enabled
@@ -2732,6 +2739,73 @@ func getCommonContainerValidationTestCases() []containerValidationTestCase {
 				},
 			},
 		},
+	}, {
+		name: "HostPath volume mount read-only with feature enabled",
+		c: corev1.Container{
+			Image: "foo",
+			VolumeMounts: []corev1.VolumeMount{{
+				MountPath: "/mount/path",
+				Name:      "the-name",
+				ReadOnly:  true,
+			}},
+		},
+		volumes: map[string]corev1.Volume{
+			"the-name": {
+				Name: "the-name",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/path",
+					},
+				},
+			},
+		},
+		cfgOpts: []configOption{withPodSpecVolumesHostPathEnabled()},
+	}, {
+		name: "HostPath volume mount writable with write feature disabled",
+		c: corev1.Container{
+			Image: "foo",
+			VolumeMounts: []corev1.VolumeMount{{
+				MountPath: "/mount/path",
+				Name:      "the-name",
+				ReadOnly:  false,
+			}},
+		},
+		volumes: map[string]corev1.Volume{
+			"the-name": {
+				Name: "the-name",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/path",
+					},
+				},
+			},
+		},
+		cfgOpts: []configOption{withPodSpecVolumesHostPathEnabled()},
+		want: (&apis.FieldError{
+			Message: "volume mount should be readOnly for this type of volume",
+			Paths:   []string{"readOnly"},
+		}).ViaFieldIndex("volumeMounts", 0),
+	}, {
+		name: "HostPath volume mount writable with write feature enabled",
+		c: corev1.Container{
+			Image: "foo",
+			VolumeMounts: []corev1.VolumeMount{{
+				MountPath: "/mount/path",
+				Name:      "the-name",
+				ReadOnly:  false,
+			}},
+		},
+		volumes: map[string]corev1.Volume{
+			"the-name": {
+				Name: "the-name",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/host/path",
+					},
+				},
+			},
+		},
+		cfgOpts: []configOption{withPodSpecVolumesHostPathEnabled(), withPodSpecHostPathWriteEnabled()},
 	}, {
 		name: "has known volumeMount twice",
 		c: corev1.Container{

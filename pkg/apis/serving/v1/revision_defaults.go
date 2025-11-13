@@ -141,15 +141,23 @@ func (rs *RevisionSpec) applyDefault(ctx context.Context, container *corev1.Cont
 		rs.PodSpec.EnableServiceLinks = cfg.Defaults.EnableServiceLinks
 	}
 
-	vNames := make(sets.Set[string])
+	// Build a set of volume names that are allowed to be writable.
+	// This includes EmptyDir, PVC (if write enabled), and HostPath (if write enabled).
+	writableVolumes := make(sets.Set[string])
 	for _, v := range rs.PodSpec.Volumes {
-		if v.EmptyDir != nil || v.PersistentVolumeClaim != nil {
-			vNames.Insert(v.Name)
+		if v.EmptyDir != nil {
+			writableVolumes.Insert(v.Name)
+		}
+		if v.PersistentVolumeClaim != nil {
+			writableVolumes.Insert(v.Name)
+		}
+		if v.HostPath != nil && cfg.Features.PodSpecHostPathWrite == config.Enabled {
+			writableVolumes.Insert(v.Name)
 		}
 	}
 	vms := container.VolumeMounts
 	for i := range vms {
-		if !vNames.Has(vms[i].Name) {
+		if !writableVolumes.Has(vms[i].Name) {
 			vms[i].ReadOnly = true
 		}
 	}

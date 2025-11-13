@@ -313,6 +313,135 @@ func TestRevisionDefaulting(t *testing.T) {
 			},
 		},
 	}, {
+		name: "hostpath volume defaults to readonly when write feature disabled",
+		in: &Revision{
+			Spec: RevisionSpec{
+				PodSpec: corev1.PodSpec{
+					EnableServiceLinks: ptr.Bool(false),
+					Containers: []corev1.Container{{
+						Image: "foo",
+						VolumeMounts: []corev1.VolumeMount{{
+							Name: "hostpath-vol",
+						}},
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "hostpath-vol",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/host/path",
+							},
+						},
+					}},
+				},
+				ContainerConcurrency: ptr.Int64(1),
+				TimeoutSeconds:       ptr.Int64(99),
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logger)
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.FeaturesConfigName,
+				},
+				Data: map[string]string{
+					"kubernetes.podspec-volumes-hostpath": "Enabled",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+		want: &Revision{
+			Spec: RevisionSpec{
+				PodSpec: corev1.PodSpec{
+					EnableServiceLinks: ptr.Bool(false),
+					Containers: []corev1.Container{{
+						Name:  config.DefaultUserContainerName,
+						Image: "foo",
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:     "hostpath-vol",
+							ReadOnly: true,
+						}},
+						Resources:      defaultResources,
+						ReadinessProbe: defaultProbe,
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "hostpath-vol",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/host/path",
+							},
+						},
+					}},
+				},
+				ContainerConcurrency: ptr.Int64(1),
+				TimeoutSeconds:       ptr.Int64(99),
+			},
+		},
+	}, {
+		name: "hostpath volume writable when write feature enabled",
+		in: &Revision{
+			Spec: RevisionSpec{
+				PodSpec: corev1.PodSpec{
+					EnableServiceLinks: ptr.Bool(false),
+					Containers: []corev1.Container{{
+						Image: "foo",
+						VolumeMounts: []corev1.VolumeMount{{
+							Name: "hostpath-vol",
+						}},
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "hostpath-vol",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/host/path",
+							},
+						},
+					}},
+				},
+				ContainerConcurrency: ptr.Int64(1),
+				TimeoutSeconds:       ptr.Int64(99),
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logger)
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.FeaturesConfigName,
+				},
+				Data: map[string]string{
+					"kubernetes.podspec-volumes-hostpath": "Enabled",
+					"kubernetes.podspec-hostpath-write":   "Enabled",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+		want: &Revision{
+			Spec: RevisionSpec{
+				PodSpec: corev1.PodSpec{
+					EnableServiceLinks: ptr.Bool(false),
+					Containers: []corev1.Container{{
+						Name:  config.DefaultUserContainerName,
+						Image: "foo",
+						VolumeMounts: []corev1.VolumeMount{{
+							Name: "hostpath-vol",
+							// ReadOnly is not set, meaning it stays writable
+						}},
+						Resources:      defaultResources,
+						ReadinessProbe: defaultProbe,
+					}},
+					Volumes: []corev1.Volume{{
+						Name: "hostpath-vol",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/host/path",
+							},
+						},
+					}},
+				},
+				ContainerConcurrency: ptr.Int64(1),
+				TimeoutSeconds:       ptr.Int64(99),
+			},
+		},
+	}, {
 		name: "timeout sets to default when 0 is specified",
 		in:   &Revision{Spec: RevisionSpec{PodSpec: corev1.PodSpec{Containers: []corev1.Container{{}}}, TimeoutSeconds: ptr.Int64(0)}},
 		wc: configMapsToContext(logger, nil, corev1.ConfigMap{

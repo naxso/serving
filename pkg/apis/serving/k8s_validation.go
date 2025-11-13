@@ -716,8 +716,16 @@ func validateVolumeMounts(ctx context.Context, mounts []corev1.VolumeMount, volu
 		}
 		seenMountPath.Insert(path.Clean(vm.MountPath))
 
-		shouldCheckReadOnlyVolume := volumes[vm.Name].EmptyDir == nil && volumes[vm.Name].PersistentVolumeClaim == nil
-		if shouldCheckReadOnlyVolume && !vm.ReadOnly {
+		// Determine if this volume type is allowed to be writable
+		vol := volumes[vm.Name]
+		isWritableType := vol.EmptyDir != nil || vol.PersistentVolumeClaim != nil
+
+		// HostPath is writable only if the feature flag is enabled
+		if vol.HostPath != nil && features.PodSpecHostPathWrite == config.Enabled {
+			isWritableType = true
+		}
+
+		if !isWritableType && !vm.ReadOnly {
 			errs = errs.Also((&apis.FieldError{
 				Message: "volume mount should be readOnly for this type of volume",
 				Paths:   []string{"readOnly"},
